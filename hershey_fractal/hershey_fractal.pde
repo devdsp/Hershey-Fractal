@@ -240,8 +240,11 @@ void keyPressed(){
   if( key == ' ' ) {pause = !pause;}
 }
 
+float m = 0;
 
 void draw() {
+  float dt = (millis() - m)/1000;
+  m = millis();
   background(102);
   stroke(255);
   
@@ -253,21 +256,21 @@ void draw() {
   }
   
   PMatrix2D transformer = new PMatrix2D();
-  transformer.scale(1.01);
+  transformer.scale(1+dt);
   
   PVector right = target.transform.mult(new PVector(1,0),null);
   
   float theta = -right.heading2D();
   if( theta != 0 ) {
-    transformer.rotate(theta*0.01);
+    transformer.rotate(theta*dt/2);
   }
   
 
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
     if( !pause ) {
-      r.position.x -= target.position.x*0.05;
-      r.position.y -= target.position.y*0.05;
+      r.position.x -= target.position.x*dt;
+      r.position.y -= target.position.y*dt;
       
       r.position = transformer.mult(r.position,null);
       r.transform.apply(transformer);
