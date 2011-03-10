@@ -1,3 +1,8 @@
+/*
+Copyright 2011 Adam Thomas
+Released under GPLv2
+*/
+
 import processing.opengl.*;
 
 String whereami = "You Are Here";
