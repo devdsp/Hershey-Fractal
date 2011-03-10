@@ -256,13 +256,13 @@ void draw() {
   }
   
   PMatrix2D transformer = new PMatrix2D();
-  transformer.scale(1+dt);
+  transformer.scale(1+dt/2);
   
   PVector right = target.transform.mult(new PVector(1,0),null);
   
   float theta = -right.heading2D();
   if( theta != 0 ) {
-    transformer.rotate(theta*dt/2);
+    transformer.rotate(theta*dt);
   }
   
 
@@ -297,8 +297,8 @@ void draw() {
   linecount = 0;
   
   if( active_buffer.size() == 0 ) {
-    exit();
+    SeedBuffer(whereami);
+    target = null;
   }
 }
-
 
