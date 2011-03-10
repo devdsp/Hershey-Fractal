@@ -59,15 +59,9 @@ class Glyph {
   void AddLine( Line l ) {
     lines = (Line[]) append(lines, l);
   }
-
-  void Render(Renderable parent, PVector position, PMatrix2D transform) {
-    if(transform.mult(new PVector(0,1),null).mag() < 0.5) {
-      for(int i=0;i<lines.length;++i) {
-        lines[i].Render(position,transform);
-      }
-      pending_buffer.add(parent);
-      
-    } else {  
+  
+  void Recurse(Renderable parent, PVector position, PMatrix2D transform) {
+    if(transform.mult(new PVector(0,1),null).mag() > 0.5) {
       ArrayList children = new ArrayList();
       for(int i=0;i<lines.length;++i) {
         CharacterIterator it = new StringCharacterIterator(whereami);    
@@ -99,7 +93,15 @@ class Glyph {
       }
       if( target == parent ) {
         target = (Renderable) children.get((int)random(0,children.size()-1));
-      }
+      }      
+    } else {
+      pending_buffer.add(parent);
+    }
+  }
+
+  void Render(Renderable parent, PVector position, PMatrix2D transform) {
+    for(int i=0;i<lines.length;++i) {
+      lines[i].Render(position,transform);
     }
   }
 }
@@ -111,6 +113,9 @@ class Renderable {
   PMatrix2D transform;
   void Render() {
     g.Render(this, position,transform);
+  }
+  void Recurse() {
+    g.Recurse(this, position,transform);
   }
   
   boolean IsOnScreen() {
@@ -247,9 +252,9 @@ void draw() {
   m = millis();
   background(102);
   stroke(255);
-  
+    
   translate(width/2,height/2);
-  pending_buffer = new ArrayList();
+  pending_buffer.clear();
     
   while( target == null || target.g == f.glyphs[0] ) {
     target = (Renderable) active_buffer.get((int)random(0,active_buffer.size()-1));
@@ -262,15 +267,15 @@ void draw() {
   
   float theta = -right.heading2D();
   if( theta != 0 ) {
-    transformer.rotate(theta*dt);
+    transformer.rotate(theta*dt/4);
   }
   
 
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
     if( !pause ) {
-      r.position.x -= target.position.x*dt;
-      r.position.y -= target.position.y*dt;
+      r.position.x -= target.position.x*dt/2;
+      r.position.y -= target.position.y*dt/2;
       
       r.position = transformer.mult(r.position,null);
       r.transform.apply(transformer);
@@ -282,23 +287,28 @@ void draw() {
     if (!r.IsOnScreen()) {
       active_buffer.remove(i);
     }
+  }
+  
+  for (int i = 0; i < active_buffer.size(); i++) {
+    Renderable r = (Renderable) active_buffer.get(i);
+    r.Recurse();
   }  
   
+  linecount = 0;
+  
+  active_buffer.clear();
+  active_buffer = (ArrayList) pending_buffer.clone();
   
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
     r.Render();
   }
     
-  active_buffer = new ArrayList(pending_buffer);
-  pending_buffer = new ArrayList();
-  
-  //println( "Glyph Count: "+active_buffer.size()+". Lines Drawn: "+linecount);
-  linecount = 0;
-  
   if( active_buffer.size() == 0 ) {
     SeedBuffer(whereami);
     target = null;
   }
+  
+//  saveFrame();
 }
 
