@@ -18,66 +18,6 @@ ArrayList pending_buffer = buffer_b;
 
 Renderable target;
 
-class AABB implements Serializable {
-  float minx,maxx,miny,maxy;
-
-  AABB(PVector p) {
-    minx=p.x;
-    maxx=p.x;
-    miny=p.y;
-    maxy=p.y;
-  }
-  AABB(AABB a) {
-    this.minx = a.minx;
-    this.maxx = a.maxx;
-    this.miny = a.miny;
-    this.maxy = a.maxy;
-  }
-
-  void Add(PVector p) {
-    this.Add(p.x,p.y);
-  }
-  void Add( float x, float y ) {
-    minx = min(minx,x);
-    maxx = max(maxx,x);
-    miny = min(miny,y);
-    maxy = max(maxy,y);
-  }  
-  void Add( AABB aabb ) {
-    this.Add(aabb.minx,aabb.miny);
-    this.Add(aabb.maxx,aabb.maxy);
-  }
-
-  Boolean IsWithin(float minx, float maxx, float miny, float maxy) {
-    return (
-      this.minx > minx && this.maxx < maxx && 
-      this.miny > miny && this.maxy < maxy
-    );
-  }
-  
-  Boolean IsOnScreen() {
-    return (
-      (
-        screenX(minx,miny,0) > 0 && screenX(minx,miny,0) < width &&
-        screenY(minx,miny,0) > 0 && screenY(minx,miny,0) < height
-      ) || (
-        screenX(maxx,miny,0) > 0 && screenX(maxx,miny,0) < width &&
-        screenY(maxx,miny,0) > 0 && screenY(maxx,miny,0) < height
-      ) || (
-        screenX(maxx,maxy,0) > 0 && screenX(maxx,maxy,0) < width &&
-        screenY(maxx,maxy,0) > 0 && screenY(maxx,maxy,0) < height
-      ) || (
-        screenX(minx,maxy,0) > 0 && screenX(minx,maxy,0) < width &&
-        screenY(minx,maxy,0) > 0 && screenY(minx,maxy,0) < height
-      )
-    );
-  }
-  
-  public String toString() {
-    return "[ " + minx + ", " + maxx + " : " + miny + ", " + maxy + " ]";
-  }
-}
-
 class Line {
   PVector[] points = new PVector[0];
 
@@ -94,25 +34,13 @@ class Line {
     for(int i=1;i<points.length;++i) {
       PVector to = transform.mult(points[i],null);
       to.add(position);
-      AABB aabb = new AABB(from);
-      aabb.Add(to);
-      if( aabb.IsOnScreen() ) {
-        stroke(255);
+      stroke(255);
+      if( IsPointOnScreen(from) || IsPointOnScreen(to) ) {
         line(from.x,from.y,to.x,to.y);
         linecount++;
       }
       from = to;
     }
-  }
-
-  AABB GetAABB(PVector position, PMatrix2D transform) {
-    AABB aabb = new AABB(position);
-    for(int i=0;i<points.length;++i) {
-      PVector tmp = transform.mult(points[i], null);
-      tmp.add(position);
-      aabb.Add(tmp);
-    }
-    return aabb;
   }
 }
 
@@ -171,15 +99,8 @@ class Glyph {
       }
     }
   }
-
-  AABB GetAABB(PVector position, PMatrix2D transform) {
-    AABB aabb = new AABB(position);
-    for(int i=0;i<lines.length;++i) {
-      aabb.Add(lines[i].GetAABB(position,transform));
-    }
-    return aabb;
-  }
 }
+
 
 class Renderable {
   Glyph g;
@@ -192,13 +113,7 @@ class Renderable {
   boolean IsOnScreen() {
     for(int i=0;i<g.lines.length;i++){
       for(int j=0;j<g.lines[i].points.length;j++){
-        PVector world_coords = transform.mult(g.lines[i].points[j],null);
-        world_coords.add(position);
-        
-        float x = screenX(world_coords.x,world_coords.y,0);
-        float y = screenY(world_coords.x,world_coords.y,0);
-                
-        if( x > 0 && x < width && y > 0 &&  y < height ) {
+        if( IsPointOnScreen(position,transform,g.lines[i].points[j]) ) {
           return true;
         }
       } 
@@ -207,12 +122,25 @@ class Renderable {
   }
 }
 
-
 class Font {
   Glyph[] glyphs = new Glyph[0];
   void AddGlyph( Glyph g ) {
     glyphs = (Glyph[]) append(glyphs,g);
   }
+}
+
+boolean IsPointOnScreen(PVector p) {
+  float x = screenX(p.x,p.y,0);
+  float y = screenY(p.x,p.y,0);
+  return x > 0 && x < width && y > 0 &&  y < height;
+}
+
+boolean IsPointOnScreen(PVector position, PMatrix2D transform, PVector p ) {
+  PVector world_coords = transform.mult(p,null);
+  world_coords.add(position);
+  float x = screenX(world_coords.x,world_coords.y,0);
+  float y = screenY(world_coords.x,world_coords.y,0);
+  return x > 0 && x < width && y > 0 &&  y < height;
 }
 
 void PushString(CharacterIterator it, PVector start, PVector end, PMatrix2D transform, ArrayList siblings) {
