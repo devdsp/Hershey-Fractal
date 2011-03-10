@@ -130,52 +130,44 @@ class Glyph {
   }
 
   void Render(Renderable parent, PVector position, PMatrix2D transform) {
-    
-    if(GetAABB(position,transform).IsOnScreen()) {
+    if(transform.mult(new PVector(0,1),null).mag() < 1) {
+      for(int i=0;i<lines.length;++i) {
+        lines[i].Render(position,transform);
+      }
+      pending_buffer.add(parent);
       
-      if(transform.mult(new PVector(0,1),null).mag() < 1) {
-        for(int i=0;i<lines.length;++i) {
-          lines[i].Render(position,transform);
-        }
-        pending_buffer.add(parent);
+    } else {  
+      ArrayList children = new ArrayList();
+      for(int i=0;i<lines.length;++i) {
+        CharacterIterator it = new StringCharacterIterator(whereami);    
         
-      } else {  
-        ArrayList children = new ArrayList();
-        for(int i=0;i<lines.length;++i) {
-          CharacterIterator it = new StringCharacterIterator(whereami);    
-          
-          if( lines[i].points.length < 2 ) {
-            continue;
-          }
-          
-          PVector from = transform.mult(lines[i].points[0],null);
-          from.add(position);
-          
-          for(int j=1;j<lines[i].points.length;++j) {
-          
-            PVector to = transform.mult(lines[i].points[j],null);
-            to.add(position);
-                        
-            PMatrix2D next_transform = new PMatrix2D(transform);
-            next_transform.scale(0.1);        
-            next_transform.rotate(
-              atan2(
-                lines[i].points[j].y-lines[i].points[j-1].y,
-                lines[i].points[j].x-lines[i].points[j-1].x
-              )
-            );
-            
-            PushString(it, from, to, next_transform, children);
-            from = to;
-          }
+        if( lines[i].points.length < 2 ) {
+          continue;
         }
-        if( target == parent ) {
-          target = (Renderable) children.get((int)random(0,children.size()-1));
+        
+        PVector from = transform.mult(lines[i].points[0],null);
+        from.add(position);
+        
+        for(int j=1;j<lines[i].points.length;++j) {
+        
+          PVector to = transform.mult(lines[i].points[j],null);
+          to.add(position);
+                      
+          PMatrix2D next_transform = new PMatrix2D(transform);
+          next_transform.scale(0.1);        
+          next_transform.rotate(
+            atan2(
+              lines[i].points[j].y-lines[i].points[j-1].y,
+              lines[i].points[j].x-lines[i].points[j-1].x
+            )
+          );
+          
+          PushString(it, from, to, next_transform, children);
+          from = to;
         }
       }
-    } else {
-      if(target == parent) {
-        target = null;
+      if( target == parent ) {
+        target = (Renderable) children.get((int)random(0,children.size()-1));
       }
     }
   }
@@ -195,6 +187,23 @@ class Renderable {
   PMatrix2D transform;
   void Render() {
     g.Render(this, position,transform);
+  }
+  
+  boolean IsOnScreen() {
+    for(int i=0;i<g.lines.length;i++){
+      for(int j=0;j<g.lines[i].points.length;j++){
+        PVector world_coords = transform.mult(g.lines[i].points[j],null);
+        world_coords.add(position);
+        
+        float x = screenX(world_coords.x,world_coords.y,0);
+        float y = screenY(world_coords.x,world_coords.y,0);
+                
+        if( x > 0 && x < width && y > 0 &&  y < height ) {
+          return true;
+        }
+      } 
+    }
+    return false;
   }
 }
 
@@ -321,9 +330,8 @@ void draw() {
   if( theta != 0 ) {
     transformer.rotate(theta*0.01);
   }
-
-  // TODO: re-write the frustrum culling so that it can happen outside the render pass
   
+
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
     if( !pause ) {
@@ -334,6 +342,14 @@ void draw() {
       r.transform.apply(transformer);
     }
   }
+  
+  for (int i = active_buffer.size()-1; i >= 0; i--) { 
+    Renderable r = (Renderable) active_buffer.get(i);
+    if (!r.IsOnScreen()) {
+      active_buffer.remove(i);
+    }
+  }  
+  
   
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
