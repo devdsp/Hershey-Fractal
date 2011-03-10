@@ -29,12 +29,15 @@ class Line {
     if(points.length < 2 ) {
       return;
     }
+    
+    strokeWeight(2);
+    stroke(255);
+        
     PVector from = transform.mult(points[0],null);
     from.add(position);
     for(int i=1;i<points.length;++i) {
       PVector to = transform.mult(points[i],null);
       to.add(position);
-      stroke(255);
       if( IsPointOnScreen(from) || IsPointOnScreen(to) ) {
         line(from.x,from.y,to.x,to.y);
         linecount++;
@@ -58,7 +61,7 @@ class Glyph {
   }
 
   void Render(Renderable parent, PVector position, PMatrix2D transform) {
-    if(transform.mult(new PVector(0,1),null).mag() < 1) {
+    if(transform.mult(new PVector(0,1),null).mag() < 0.5) {
       for(int i=0;i<lines.length;++i) {
         lines[i].Render(position,transform);
       }
