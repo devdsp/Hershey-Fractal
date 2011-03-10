@@ -295,28 +295,38 @@ void keyPressed(){
   if( key == ' ' ) {pause = !pause;}
 }
 
-PVector trans = new PVector(100,100);
-
 
 void draw() {
   background(102);
   stroke(255);
   
   translate(width/2,height/2);
+  pending_buffer = new ArrayList();
     
   while( target == null || target.g == f.glyphs[0] ) {
     target = (Renderable) active_buffer.get((int)random(0,active_buffer.size()-1));
   }
+  
+  PMatrix2D transformer = new PMatrix2D();
+  transformer.scale(1.01);
+  
+  PVector right = target.transform.mult(new PVector(1,0),null);
+  
+  float theta = -right.heading2D();
+  if( theta != 0 ) {
+    transformer.rotate(theta*0.01);
+  }
 
-  pending_buffer = new ArrayList();
+  // TODO: re-write the frustrum culling so that it can happen outside the render pass
   
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
     if( !pause ) {
-      r.position.mult(1.01);
       r.position.x -= target.position.x*0.05;
       r.position.y -= target.position.y*0.05;
-      r.transform.scale(1.01);
+      
+      r.position = transformer.mult(r.position,null);
+      r.transform.apply(transformer);
     }
   }
   
