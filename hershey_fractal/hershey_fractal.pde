@@ -6,8 +6,6 @@ Released under GPLv2
 import processing.opengl.*;
 
 String whereami = "You Are Here";
-PMatrix2D world = new PMatrix2D();
-PVector start;
 Font f = new Font();
 int linecount =0;
 float recurse_height = 0.5;
@@ -251,7 +249,7 @@ float m = 0;
 void draw() {
   float dt = (millis() - m)/1000;
   m = millis();
-  background(102);
+  background(0,0,0);
   stroke(255);
     
   translate(width/2,height/2);
@@ -310,7 +308,5 @@ void draw() {
     SeedBuffer(whereami);
     target = null;
   }
-  
-//  saveFrame();
 }
 
