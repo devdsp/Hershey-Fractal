@@ -240,6 +240,7 @@ boolean pause = false;
 
 void keyPressed(){
   if( key == ' ' ) {pause = !pause;}
+  if( key == 'r' ) {pending_buffer.clear(); active_buffer.clear(); target = null; SeedBuffer(whereami);}
 }
 
 float m = 0;
