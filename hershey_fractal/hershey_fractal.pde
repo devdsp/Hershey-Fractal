@@ -261,24 +261,25 @@ void draw() {
   }
   
   PMatrix2D transformer = new PMatrix2D();
-  transformer.scale(1+dt/2);
+  transformer.scale(1+dt/5);
   
-  PVector right = target.transform.mult(new PVector(1,0),null);
+  float theta = -target.transform.mult(new PVector(1,0),null).heading2D();
   
-  float theta = -right.heading2D();
-  if( theta != 0 ) {
-    transformer.rotate(theta*dt/4);
-  }
-  
+  transformer.rotate(min(1,max(-1,theta > PI ? 2*PI - theta : theta))*dt/2);
 
   for (int i = 0; i < active_buffer.size(); i++) {
     Renderable r = (Renderable) active_buffer.get(i);
     if( !pause ) {
-      r.position.x -= target.position.x*dt/2;
-      r.position.y -= target.position.y*dt/2;
       
-      r.position = transformer.mult(r.position,null);
       r.transform.apply(transformer);
+      PVector foo = new PVector(r.position.x, r.position.y);
+      foo.sub(target.position);
+      foo = transformer.mult(foo,null);
+      foo.add(target.position);
+      r.position = foo;
+      
+      r.position.x -= target.position.x*dt/4;
+      r.position.y -= target.position.y*dt/4;
     }
   }
   
