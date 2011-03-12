@@ -194,11 +194,9 @@ void SeedBuffer(String s) {
     position.add(new PVector(f.glyphs[0].maxx-f.glyphs[0].minx,0));
   }
 }
-
 void setup() {
-  size(800, 450, OPENGL);
-  background(102);
-
+  size(screen.width-10, screen.height-32, OPENGL);
+  
   BufferedReader reader;
   byte font_data[] = loadBytes("rowmans.1.jhf");
 
