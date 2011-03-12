@@ -10,6 +10,7 @@ PMatrix2D world = new PMatrix2D();
 PVector start;
 Font f = new Font();
 int linecount =0;
+float recurse_height = 0.5;
 
 ArrayList buffer_a = new ArrayList();
 ArrayList buffer_b = new ArrayList();
@@ -61,7 +62,7 @@ class Glyph {
   }
   
   void Recurse(Renderable parent, PVector position, PMatrix2D transform) {
-    if(transform.mult(new PVector(0,1),null).mag() > 0.5) {
+    if(transform.mult(new PVector(0,1),null).mag() > recurse_height) {
       ArrayList children = new ArrayList();
       for(int i=0;i<lines.length;++i) {
         CharacterIterator it = new StringCharacterIterator(whereami);    
