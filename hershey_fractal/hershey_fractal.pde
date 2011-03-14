@@ -7,15 +7,6 @@ import processing.opengl.*;
 
 String whereami = "You Are Here";
 Font f = new Font();
-int linecount =0;
-float recurse_height = 0.5;
-
-ArrayList buffer_a = new ArrayList();
-ArrayList buffer_b = new ArrayList();
-ArrayList active_buffer = buffer_a;
-ArrayList pending_buffer = buffer_b;
-
-Renderable target;
 
 class Line {
   PVector[] points = new PVector[0];
@@ -23,25 +14,61 @@ class Line {
   void AddPoint( PVector p ) {
     points = (PVector[]) append(points,p);
   }
-
-  void Render(PVector position, PMatrix2D transform) {
-    if(points.length < 2 ) {
-      return;
-    }
-    
-    strokeWeight(2);
-    stroke(255);
-        
-    PVector from = transform.mult(points[0],null);
-    from.add(position);
-    for(int i=1;i<points.length;++i) {
-      PVector to = transform.mult(points[i],null);
-      to.add(position);
-      if( IsPointOnScreen(from) || IsPointOnScreen(to) ) {
-        line(from.x,from.y,to.x,to.y);
-        linecount++;
+  
+  void Render() {
+    PVector h = new PVector(
+      screenX(0,7,0) - screenX(0,-7,0),
+      screenY(0,7,0) - screenY(0,-7,0)
+    );
+    if( h.mag() > 10 ) {
+      this.Recurse();
+    } else {
+      
+      PVector from = null;
+      for(PVector p : points) {
+        if(from != null) {
+          line(from.x,from.y,p.x,p.y);
+        }
+        from = new PVector(p.x,p.y);
       }
-      from = to;
+    }
+  }
+  
+  void Recurse() {
+    PVector from = null;
+    CharacterIterator it = new StringCharacterIterator(whereami);
+    char ch=it.first();
+    for(PVector p : points) {
+      if(from != null) {
+        pushMatrix();
+        translate(from.x,from.y);
+        {
+          float s = 10;
+          PVector foo = new PVector(p.x,p.y);
+          foo.sub(from);
+          float theta = foo.heading2D();
+          float len = foo.mag()*s;
+          pushMatrix();
+          rotate(theta);
+          scale(1/s);
+          while (len > 0) {
+            Glyph g = f.glyphs[ch-32];
+            g.Render();
+            translate(g.maxx-g.minx, 0);
+            ch=it.next();
+            if(ch == CharacterIterator.DONE) {
+              g = f.glyphs[' '-32];
+              translate(g.maxx-g.minx,0);
+              len -= g.maxx-g.minx;
+              ch = it.first();
+            }
+            len -= g.maxx-g.minx;
+          }
+          popMatrix();
+        }
+        popMatrix();
+      }
+      from = new PVector(p.x,p.y);
     }
   }
 }
@@ -59,73 +86,32 @@ class Glyph {
     lines = (Line[]) append(lines, l);
   }
   
-  void Recurse(Renderable parent, PVector position, PMatrix2D transform) {
-    if(transform.mult(new PVector(0,1),null).mag() > recurse_height) {
-      ArrayList children = new ArrayList();
-      for(int i=0;i<lines.length;++i) {
-        CharacterIterator it = new StringCharacterIterator(whereami);    
-        
-        if( lines[i].points.length < 2 ) {
-          continue;
-        }
-        
-        PVector from = transform.mult(lines[i].points[0],null);
-        from.add(position);
-        
-        for(int j=1;j<lines[i].points.length;++j) {
-        
-          PVector to = transform.mult(lines[i].points[j],null);
-          to.add(position);
-                      
-          PMatrix2D next_transform = new PMatrix2D(transform);
-          next_transform.scale(0.1);        
-          next_transform.rotate(
-            atan2(
-              lines[i].points[j].y-lines[i].points[j-1].y,
-              lines[i].points[j].x-lines[i].points[j-1].x
-            )
-          );
-          
-          PushString(it, from, to, next_transform, children);
-          from = to;
-        }
-      }
-      if( target == parent ) {
-        target = (Renderable) children.get((int)random(0,children.size()-1));
-      }      
-    } else {
-      pending_buffer.add(parent);
-    }
-  }
-
-  void Render(Renderable parent, PVector position, PMatrix2D transform) {
-    for(int i=0;i<lines.length;++i) {
-      lines[i].Render(position,transform);
-    }
-  }
-}
-
-
-class Renderable {
-  Glyph g;
-  PVector position;
-  PMatrix2D transform;
-  void Render() {
-    g.Render(this, position,transform);
-  }
-  void Recurse() {
-    g.Recurse(this, position,transform);
-  }
-  
-  boolean IsOnScreen() {
-    for(int i=0;i<g.lines.length;i++){
-      for(int j=0;j<g.lines[i].points.length;j++){
-        if( IsPointOnScreen(position,transform,g.lines[i].points[j]) ) {
+  boolean OnScreen() {
+    for(Line l : lines ) {
+      for(PVector p : l.points ) {
+        float x = screenX(p.x,p.y);
+        float y = screenY(p.x,p.y);
+        if(x > 0 && x < width && y > 0 && y < height) {
           return true;
         }
-      } 
+      }
     }
-    return false;
+    return false; 
+  }
+  
+  void Render() {
+    if(!OnScreen()) {
+      return;
+    }
+    for (Line l : lines) {
+      l.Render();
+    }
+  }
+  
+  void Recurse() {
+    for (Line l : lines) {
+      l.Recurse();
+    }
   }
 }
 
@@ -133,42 +119,6 @@ class Font {
   Glyph[] glyphs = new Glyph[0];
   void AddGlyph( Glyph g ) {
     glyphs = (Glyph[]) append(glyphs,g);
-  }
-}
-
-boolean IsPointOnScreen(PVector p) {
-  float x = screenX(p.x,p.y,0);
-  float y = screenY(p.x,p.y,0);
-  return x > 0 && x < width && y > 0 &&  y < height;
-}
-
-boolean IsPointOnScreen(PVector position, PMatrix2D transform, PVector p ) {
-  PVector world_coords = transform.mult(p,null);
-  world_coords.add(position);
-  float x = screenX(world_coords.x,world_coords.y,0);
-  float y = screenY(world_coords.x,world_coords.y,0);
-  return x > 0 && x < width && y > 0 &&  y < height;
-}
-
-void PushString(CharacterIterator it, PVector start, PVector end, PMatrix2D transform, ArrayList siblings) {
-  PVector offset = new PVector(start.x, start.y);
-  char ch = it.current();
-
-  while( PVector.dist(start,end) > PVector.dist(start,offset) ) {
-    
-    Renderable r = new Renderable();
-    r.g = f.glyphs[ch-32];
-    r.position = new PVector(offset.x, offset.y);
-    r.transform = new PMatrix2D(transform);
-    pending_buffer.add(r);
-    siblings.add(r);
-    
-    offset.add(transform.mult(new PVector(r.g.maxx-r.g.minx,0),null));
-    
-    if( (ch = it.next()) == CharacterIterator.DONE ) {
-      offset.add(transform.mult(new PVector(f.glyphs[0].maxx-f.glyphs[0].minx,0),null));
-      ch = it.first();
-    }
   }
 }
 
@@ -181,21 +131,10 @@ int HersheyLen(String s) {
   return len;
 }
 
-
-void SeedBuffer(String s) {
-  StringCharacterIterator it = new StringCharacterIterator(s);
-  PVector position = new PVector(HersheyLen(s)/-2,0);
-  for(char ch = it.first(); ch != CharacterIterator.DONE;ch = it.next()) {
-    Renderable r = new Renderable();
-    r.g = f.glyphs[ch-32];
-    r.position = new PVector(position.x, position.y);
-    r.transform = new PMatrix2D();
-    active_buffer.add(r);
-    position.add(new PVector(f.glyphs[0].maxx-f.glyphs[0].minx,0));
-  }
-}
 void setup() {
-  size(screen.width-10, screen.height-32, OPENGL);
+  size(screen.width, screen.height, OPENGL);
+  
+  strokeWeight(2);
   
   BufferedReader reader;
   byte font_data[] = loadBytes("rowmans.1.jhf");
@@ -233,79 +172,29 @@ void setup() {
       }
     }
   }
-  SeedBuffer(whereami);
 }
 
-boolean pause = false;
 
-void keyPressed(){
-  if( key == ' ' ) {pause = !pause;}
-  if( key == 'r' ) {pending_buffer.clear(); active_buffer.clear(); target = null; SeedBuffer(whereami);}
-}
 
 float m = 0;
-
+float s=1;
 void draw() {
   float dt = (millis() - m)/1000;
   m = millis();
   background(0,0,0);
   stroke(255);
-    
   translate(width/2,height/2);
-  pending_buffer.clear();
-    
-  while( target == null || target.g == f.glyphs[0] ) {
-    target = (Renderable) active_buffer.get((int)random(0,active_buffer.size()-1));
-  }
   
-  PMatrix2D transformer = new PMatrix2D();
-  transformer.scale(1+dt/5);
+  scale(s);
+  s*=1+dt/4;
+  translate(-HersheyLen(whereami)/2, 0);
   
-  float theta = -target.transform.mult(new PVector(1,0),null).heading2D();
-  
-  transformer.rotate(min(1,max(-1,theta > PI ? 2*PI - theta : theta))*dt/2);
+  CharacterIterator it = new StringCharacterIterator(whereami);
 
-  for (int i = 0; i < active_buffer.size(); i++) {
-    Renderable r = (Renderable) active_buffer.get(i);
-    if( !pause ) {
-      
-      r.transform.apply(transformer);
-      PVector foo = new PVector(r.position.x, r.position.y);
-      foo.sub(target.position);
-      foo = transformer.mult(foo,null);
-      foo.add(target.position);
-      r.position = foo;
-      
-      r.position.x -= target.position.x*dt/4;
-      r.position.y -= target.position.y*dt/4;
-    }
-  }
-  
-  for (int i = active_buffer.size()-1; i >= 0; i--) { 
-    Renderable r = (Renderable) active_buffer.get(i);
-    if (!r.IsOnScreen()) {
-      active_buffer.remove(i);
-    }
-  }
-  
-  for (int i = 0; i < active_buffer.size(); i++) {
-    Renderable r = (Renderable) active_buffer.get(i);
-    r.Recurse();
-  }  
-  
-  linecount = 0;
-  
-  active_buffer.clear();
-  active_buffer = (ArrayList) pending_buffer.clone();
-  
-  for (int i = 0; i < active_buffer.size(); i++) {
-    Renderable r = (Renderable) active_buffer.get(i);
-    r.Render();
-  }
-    
-  if( active_buffer.size() == 0 ) {
-    SeedBuffer(whereami);
-    target = null;
+  for (char ch=it.first(); ch != CharacterIterator.DONE; ch=it.next()) {
+    Glyph g = f.glyphs[ch-32];
+    g.Render();
+    translate(g.maxx-g.minx, 0);
   }
 }
 
