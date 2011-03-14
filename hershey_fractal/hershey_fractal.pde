@@ -195,7 +195,7 @@ void SeedBuffer(String s) {
   }
 }
 void setup() {
-  size(screen.width-10, screen.height-32, OPENGL);
+  size(screen.width, screen.height, OPENGL);
   
   BufferedReader reader;
   byte font_data[] = loadBytes("rowmans.1.jhf");
